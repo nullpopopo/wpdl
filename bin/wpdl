@@ -1,0 +1,38 @@
+#!/bin/bash
+set -e
+
+## Environment
+DLSITE=http://ja.wordpress.org/
+WPDIR=wordpress
+DLDIR=${HOME}/src/${WPDIR}
+DLFILE=latest-ja.tar.gz
+VFILE=${WPDIR}/wp-includes/version.php
+VERSION=${DLDIR}/version
+YYYYMMDD=$(date +%Y/%m/%d)
+MAILTO=root
+
+## Initialize
+[ ! -d ${DLDIR} ] && mkdir -p ${DLDIR}
+cd ${DLDIR}
+
+## Now Version record
+ls -l | egrep ^d | awk '{print $NF}' | \
+egrep '(^[0-9].)' | tail -1 > ${VERSION}
+
+## Wordpress GET and Expand
+
+wget ${DLSITE}/${DLFILE} && \
+tar xzf ${DLFILE} ${VFILE} > /dev/null 2>&1
+VDIR=$(egrep '(^\$wp_version)' ${VFILE} | awk '{print $NF}' | sed -e "s/'//g;s/;//g")
+
+[ ! -d ${VDIR} ] && mkdir -p ${VDIR} && mv ${DLFILE} ${VDIR}
+[ -d ${WPDIR} ] && rm -fr ${WPDIR}
+[ -f ${DLFILE} ] && rm -f ${DLFILE}
+[ -L current ] && rm -f current
+ln -s $(ls -l | egrep ^d | awk '{print $NF}' | tail -1) current
+
+ls -l | egrep ^d | tail -1 | awk '{print $NF}' | \
+diff -y - ${VERSION} > /dev/null 2>&1 || \
+ls -l | egrep ^d | tail -1 | awk '{print $NF}' | \
+awk '{print "WordPress",$1,"Released"}' | \
+mail -s "${YYYYMMDD} Wordpress Downloaded" ${MAILTO}
